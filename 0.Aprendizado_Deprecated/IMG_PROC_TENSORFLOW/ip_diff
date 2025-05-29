@@ -1,0 +1,14 @@
+first = "10.0.0.0"
+last  = "10.0.0.50"
+
+print(first.split("."))
+
+def diff_IPs(first, last):
+    diff = 0
+    list1 = first.split(".")
+    list2 = last.split(".")
+    for i in range(0, len(list1)):
+        diff += (int(list2[i])-int(list1[i])) * pow(256,(len(list1)-(i+1)))
+    return diff
+
+print (diff_IPs(first, last))
