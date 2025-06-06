@@ -3,12 +3,13 @@ import vedo
 import random
 import time
 #import math
+from vedo import *
 from scipy.spatial import cKDTree
 from scipy.interpolate import griddata
 
 # Load Brain Mesh (Change 'brain.obj' to your model file)
-brain_mesh = vedo.Mesh("brain.obj")  # Load & color it gray
-brain_mesh.c('white').lighting('glossy')
+brain = vedo.Mesh("brain.obj").c("white") # Load & color it gray
+#brain.c('white').lighting('glossy')
 
 electrode_labels = [
     "Fp1", "Fp2", "F3", "F4", "C3", "C4", "P3", "P4", "O1", "O2",
@@ -75,49 +76,57 @@ for (theta, phi), label in zip(theta_phi_positions, electrode_labels):
     electrodes.append((x, y, z, label))
 
 # Scale & project electrodes onto the brain mesh
-brain_center = brain_mesh.center_of_mass()
-brain_radius = brain_mesh.diagonal_size() * 0.35
+brain_center = brain.center_of_mass()
+brain_radius = brain.diagonal_size() * 0.35
 electrode_points = [vedo.Point(np.array([y, x, z]) * brain_radius + brain_center, r=10, c="red") for x, y, z, _ in electrodes]
 electrode_labels = [vedo.Text3D(label, np.array([y, x, z]) * brain_radius + brain_center, s=.4, c="black") for x, y, z, label in electrodes]
 
 # Interpolate electrode values onto the brain mesh
-brain_points = brain_mesh.points  # Get the points of the brain mesh
+brain_points = brain.points  # Get the points of the brain mesh
 electrode_positions = np.array([np.array([y, x, z]) * brain_radius + brain_center for x, y, z, _ in electrodes])
 
 # Use a KDTree to find the nearest points on the brain mesh
 kdtree = cKDTree(electrode_positions)
 dist, indices = kdtree.query(brain_points)
 
+frame = 0
+#frame_label = [vedo.Text3D(frame, [0,0,0], s=.4, c="black")]
 
-# Initialize n empty lists, being n the number of electrodes
-electrode_values = [[] for _ in electrodes]
-
-
+# Setup the scene
+#world = Box([0,0,0], size=(1, 1, 1)).wireframe()
+plt = Plotter(interactive=False)
+plt.show(brain, electrode_points, electrode_labels, __doc__)
+#plt.show(brain, electrode_points, electrode_labels, __doc__, viewup="y")
 
 # plot loop update
-frame = 0
-show_obj = None
 
-while frame < 60:
+
+
+while True:
+#for frame in np.arange(0, 10, 1):
+    time.sleep(1)
+    #print("loopstart")
     
+    # Initialize n empty lists, being n the number of electrodes
+    #print("clean list")
+    electrode_values = [[] for _ in electrodes]
+
+    #print("random list")
     #Assign random values to each electrode each frame
-    # Append random values to each list
     for i in range(0, len(electrode_values)):
         electrode_values[i].append(random.uniform(-1, 1))
 
+    #print("interpol")
     # Interpolate the electrode values to the mesh points using griddata
     interpolated_values = griddata(electrode_positions, electrode_values, brain_points, method='linear',fill_value=0)
 
+    #print("map")
     # Map the interpolated values to a coolwarm colormap
-    brain_mesh.cmap("coolwarm", interpolated_values, vmin=-1, vmax=1).add_scalarbar(title="Electrode Values", nlabels=5)
+    #brain.cmap("coolwarm", interpolated_values, vmin=-1, vmax=1).add_scalarbar(title="Electrode Values", nlabels=5).show()
+    brain.cmap("jet", interpolated_values, vmin=-1, vmax=1).add_scalarbar(title="Electrode Values", nlabels=5).show()
 
+    
+    plt.render()
 
-    if show_obj is None:
-        show_obj = vedo.show(brain_mesh, *electrode_points, *electrode_labels, axes=1, title="EEG Electrode Positions with Value Gradient")
-    else:
-        show_obj.render()
-
-    vedo.close()
-    frame += 1
-    print(frame)
-    time.sleep(1)
+plt.interactive()
+plt.close()
